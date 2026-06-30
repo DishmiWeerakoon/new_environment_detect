@@ -1,0 +1,25 @@
+# Virtual environment
+venv/
+.venv/
+
+# Secrets
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter and VS Code
+.ipynb_checkpoints/
+.vscode/
+
+# Datasets and generated processed files
+datasets/
+data/raw/
+data/processed/features/
+data/processed/train_test_split/*.npy
+data/processed/spectrograms/*.npy
+
+# OS files
+.DS_Store
+Thumbs.db

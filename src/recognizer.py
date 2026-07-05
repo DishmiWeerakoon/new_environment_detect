@@ -50,7 +50,7 @@ ENVIRONMENT_MODES = {
 }
 
 _DEFAULT_MODEL = os.path.join(
-    os.path.dirname(__file__), "..", "models", "cnn_model.keras"
+    os.path.dirname(__file__), "..", "models", "cnn_model_v2.keras"
 )
 
 
@@ -99,11 +99,9 @@ class EnvironmentRecognizer:
     # ------------------------------------------------------------------
 
     def predict_file(self, audio_path: str, duration: float = None) -> dict:
-        """Run inference on a WAV / MP3 / FLAC file."""
-        import librosa
-        audio, sr = librosa.load(
-            audio_path, sr=self.sample_rate, mono=True, duration=duration
-        )
+        """Run inference on any audio file including .m4a."""
+        from src.feature_extraction import _load_audio
+        audio, sr = _load_audio(audio_path, sample_rate=self.sample_rate, duration=duration)
         return self.predict_array(audio, sr)
 
     def predict_array(self, audio: np.ndarray, sr: int = None) -> dict:
@@ -216,6 +214,7 @@ class EnvironmentRecognizer:
 
         hop_samples    = int(self.hop_size    * self.sample_rate)
         window_samples = int(self.window_size * self.sample_rate)
+        SILENCE_THRESHOLD = 0.025  # your room ambient noise peaks at ~0.021
 
         def _audio_callback(indata, frames, time_info, status):
             mono = indata[:, 0] if indata.ndim > 1 else indata.flatten()
@@ -242,6 +241,10 @@ class EnvironmentRecognizer:
             while len(self._mic_buffer) >= window_samples:
                 segment          = self._mic_buffer[:window_samples]
                 self._mic_buffer = self._mic_buffer[hop_samples:]
+
+                rms = float(np.sqrt(np.mean(segment ** 2)))
+                if rms < SILENCE_THRESHOLD:
+                    continue  # silence — don't classify, don't update vote buffer
 
                 mel   = extract_mel_from_segment(segment, sample_rate=self.sample_rate)
                 X     = mel[np.newaxis, ..., np.newaxis]   # (1, 128, 173, 1)

@@ -2,6 +2,44 @@ import numpy as np
 import librosa
 
 
+def _load_audio(file_path, sample_rate=22050, mono=True, duration=None):
+    """Load audio from any format. Uses PyAV for .m4a (AAC), librosa otherwise."""
+    if file_path.lower().endswith('.m4a'):
+        try:
+            import av
+            container = av.open(file_path)
+            stream = container.streams.audio[0]
+            native_sr = stream.sample_rate
+
+            frames = []
+            for frame in container.decode(stream):
+                arr = frame.to_ndarray().astype(np.float32)
+                frames.append(arr)
+            container.close()
+
+            if not frames:
+                return None, sample_rate
+
+            audio = np.concatenate(frames, axis=-1)
+            if mono and audio.ndim > 1:
+                audio = audio.mean(axis=0)
+            audio = audio.flatten()
+
+            if native_sr != sample_rate:
+                audio = librosa.resample(audio, orig_sr=native_sr, target_sr=sample_rate)
+
+            if duration is not None:
+                audio = audio[:int(sample_rate * duration)]
+
+            return audio, sample_rate
+        except Exception as e:
+            print(f"PyAV failed for {file_path}: {e}")
+            return None, sample_rate
+
+    audio, sr = librosa.load(file_path, sr=sample_rate, mono=mono, duration=duration)
+    return audio, sr
+
+
 def extract_features(file_path, sample_rate=22050, duration=4.0, n_mfcc=40):
     """
     Load an audio file and return a flat feature vector.
@@ -100,7 +138,9 @@ def extract_mel_spectrogram_2d(file_path, sample_rate=22050, duration=4.0,
     """Load an audio file and return a (n_mels, time_frames) mel spectrogram
     normalized to [0, 1].  Returns None on error or near-silent audio."""
     try:
-        audio, sr = librosa.load(file_path, sr=sample_rate, duration=duration, mono=True)
+        audio, sr = _load_audio(file_path, sample_rate=sample_rate, duration=duration)
+        if audio is None:
+            return None
         expected = int(sample_rate * duration)
         if len(audio) < expected:
             audio = np.pad(audio, (0, expected - len(audio)))
@@ -126,7 +166,9 @@ def extract_mel_segments_from_long_file(file_path, sample_rate=22050, segment_du
     n_segments   : int               — total segments before silence filter
     """
     try:
-        audio, sr = librosa.load(file_path, sr=sample_rate, mono=True)
+        audio, sr = _load_audio(file_path, sample_rate=sample_rate)
+        if audio is None:
+            return [], 0
     except Exception as e:
         print(f"Error loading {file_path}: {e}")
         return [], 0

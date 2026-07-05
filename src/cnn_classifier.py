@@ -8,6 +8,10 @@ LABEL_TO_ID = {v: k for k, v in LABEL_MAP.items()}
 # sr=22050, duration=4.0s, n_mels=128, hop_length=512 → 173 time frames
 CNN_INPUT_SHAPE = (128, 173, 1)
 
+# Decision threshold: P(conversation) >= this → "conversation"
+# Lower this (e.g. 0.35) if speech is being misclassified as transportation.
+CONVERSATION_THRESHOLD = 0.40
+
 
 class CNNClassifier:
     """
@@ -103,11 +107,11 @@ class CNNClassifier:
     # Inference
     # ------------------------------------------------------------------
 
-    def predict(self, X) -> np.ndarray:
+    def predict(self, X, threshold: float = CONVERSATION_THRESHOLD) -> np.ndarray:
         if X.ndim == 3:
             X = X[..., np.newaxis]
         proba = self.model.predict(X, verbose=0).flatten()
-        return (proba >= 0.5).astype(int)
+        return (proba >= threshold).astype(int)
 
     def predict_proba(self, X) -> np.ndarray:
         """Return (N, 2) array: [:, 0] = P(transportation), [:, 1] = P(conversation)."""

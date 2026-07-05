@@ -12,11 +12,12 @@ import time
 sys.path.insert(0, os.path.abspath('.'))
 from src.recognizer import EnvironmentRecognizer
 
-MODEL_PATH = "models/cnn_model.keras"
+MODEL_PATH = "models/cnn_model_v2.keras"
+if not os.path.isfile(MODEL_PATH):
+    MODEL_PATH = "models/cnn_model.keras"
 
 if not os.path.isfile(MODEL_PATH):
-    print(f"ERROR: Model not found at {MODEL_PATH}")
-    print("Run notebook 04 (04_model_training.ipynb) first to train and save the model.")
+    print(f"ERROR: Model not found. Run notebook 04 first.")
     sys.exit(1)
 
 rec = EnvironmentRecognizer(model_path=MODEL_PATH)

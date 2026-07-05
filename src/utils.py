@@ -12,6 +12,10 @@ import seaborn as sns
 # ---------------------------------------------------------------------------
 
 def load_audio(file_path: str, sample_rate: int = 22050, duration: float | None = None):
+    if file_path.lower().endswith('.m4a'):
+        from src.feature_extraction import _load_audio
+        audio, sr = _load_audio(file_path, sample_rate=sample_rate, duration=duration)
+        return audio, sr
     audio, sr = librosa.load(file_path, sr=sample_rate, duration=duration)
     return audio, sr
 
